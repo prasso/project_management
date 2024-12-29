@@ -1,0 +1,23 @@
+{
+    "name": "prasso/project_management",
+    "description": "Project Management package for Prasso",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Prasso\\ProjectManagement\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^8.2"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Prasso\\ProjectManagement\\ProjectManagementServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
