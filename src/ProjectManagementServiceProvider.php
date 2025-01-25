@@ -16,11 +16,13 @@ class ProjectManagementServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
-        $this->loadViewsFrom(__DIR__ . '/../resources/views', 'project-management');
+        $this->loadViewsFrom(__DIR__ . '/../resources/views', 'prasso-pm');
+        $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
 
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__ . '/../config/project_management.php' => config_path('project_management.php'),
+                __DIR__ . '/../resources/views' => resource_path('views/vendor/prasso-pm'),
             ], 'project-management-config');
         }
 
