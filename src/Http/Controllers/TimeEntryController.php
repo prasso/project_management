@@ -8,11 +8,29 @@ use Illuminate\Http\Request;
 
 class TimeEntryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $timeEntries = TimeEntry::with(['task.project', 'user'])
+        $timeEntries = TimeEntry::with(['task.project.client', 'user'])
             ->latest()
-            ->paginate(10);
+            ->get();
+
+        if ($request->wantsJson()) {
+            return response()->json($timeEntries->map(function ($entry) {
+                return [
+                    'id' => $entry->id,
+                    'start_time' => $entry->start_time,
+                    'end_time' => $entry->end_time,
+                    'description' => $entry->description,
+                    'billable' => $entry->billable,
+                    'hourly_rate' => $entry->hourly_rate,
+                    'task_id' => $entry->task_id,
+                    'task_name' => $entry->task->title,
+                    'project_name' => $entry->task->project->name,
+                    'client_name' => $entry->task->project->client->name
+                ];
+            }));
+        }
+
         return view('prasso-pm::time-entries.index', compact('timeEntries'));
     }
 
@@ -56,23 +74,23 @@ class TimeEntryController extends Controller
     public function update(Request $request, TimeEntry $timeEntry)
     {
         $validated = $request->validate([
-            'task_id' => 'required|exists:tasks,id',
             'start_time' => 'required|date',
             'end_time' => 'nullable|date|after:start_time',
             'description' => 'nullable|string',
-            'billable' => 'boolean',
-            'hourly_rate' => 'nullable|numeric|min:0',
         ]);
 
         $timeEntry->update($validated);
 
-        return redirect()->route('prasso-pm.time-entries.index')
-            ->with('success', 'Time entry updated successfully.');
+        return response()->json(['message' => 'Time entry updated successfully']);
     }
 
     public function destroy(TimeEntry $timeEntry)
     {
         $timeEntry->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json(['message' => 'Time entry deleted successfully']);
+        }
 
         return redirect()->route('prasso-pm.time-entries.index')
             ->with('success', 'Time entry deleted successfully.');

@@ -68,9 +68,7 @@
                 </div>
             </div>
         </div>
-        <div class="mt-4">
-            {{ $timeEntries->links() }}
-        </div>
+       
     </div>
 </div>
 @endsection

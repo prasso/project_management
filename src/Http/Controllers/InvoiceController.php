@@ -11,7 +11,12 @@ class InvoiceController extends Controller
 {
     public function index()
     {
-        $invoices = Invoice::with('client')->latest()->paginate(10);
+        $invoices = Invoice::with(['client', 'timeEntries'])->latest()->paginate(10);
+        
+        if (request()->wantsJson()) {
+            return response()->json($invoices);
+        }
+
         return view('prasso-pm::invoices.index', compact('invoices'));
     }
 
@@ -54,6 +59,10 @@ class InvoiceController extends Controller
         }
 
         $invoice->calculateTotals()->save();
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Invoice created successfully', 'invoice' => $invoice]);
+        }
 
         return redirect()->route('prasso-pm.invoices.index')
             ->with('success', 'Invoice created successfully.');
@@ -112,6 +121,10 @@ class InvoiceController extends Controller
 
         $invoice->calculateTotals()->save();
 
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Invoice updated successfully', 'invoice' => $invoice]);
+        }
+
         return redirect()->route('prasso-pm.invoices.index')
             ->with('success', 'Invoice updated successfully.');
     }
@@ -119,6 +132,10 @@ class InvoiceController extends Controller
     public function destroy(Invoice $invoice)
     {
         $invoice->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json(['message' => 'Invoice deleted successfully']);
+        }
 
         return redirect()->route('prasso-pm.invoices.index')
             ->with('success', 'Invoice deleted successfully.');

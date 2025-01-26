@@ -9,7 +9,12 @@ class ClientController extends Controller
 {
     public function index()
     {
-        $clients = Client::latest()->paginate(10);
+        $clients = Client::with('projects')->latest()->paginate(10);
+        
+        if (request()->wantsJson()) {
+            return response()->json($clients);
+        }
+
         return view('prasso-pm::clients.index', compact('clients'));
     }
 
@@ -22,18 +27,18 @@ class ClientController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
+            'email' => 'nullable|email',
             'phone' => 'nullable|string|max:20',
-            'company' => 'nullable|string|max:255',
             'address' => 'nullable|string',
-            'city' => 'nullable|string|max:255',
-            'state' => 'nullable|string|max:255',
-            'zip' => 'nullable|string|max:20',
-            'country' => 'nullable|string|max:255',
+            'website' => 'nullable|url',
             'notes' => 'nullable|string',
         ]);
 
-        Client::create($validated);
+        $client = Client::create($validated);
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Client created successfully', 'client' => $client]);
+        }
 
         return redirect()->route('prasso-pm.clients.index')
             ->with('success', 'Client created successfully.');
@@ -73,6 +78,10 @@ class ClientController extends Controller
     public function destroy(Client $client)
     {
         $client->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json(['message' => 'Client deleted successfully']);
+        }
 
         return redirect()->route('prasso-pm.clients.index')
             ->with('success', 'Client deleted successfully.');

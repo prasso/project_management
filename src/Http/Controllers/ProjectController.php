@@ -11,6 +11,11 @@ class ProjectController extends Controller
     public function index()
     {
         $projects = Project::with('client')->latest()->paginate(10);
+        
+        if (request()->wantsJson()) {
+            return response()->json($projects);
+        }
+        
         return view('prasso-pm::projects.index', compact('projects'));
     }
 
@@ -33,7 +38,11 @@ class ProjectController extends Controller
             'hourly_rate' => 'nullable|numeric|min:0',
         ]);
 
-        Project::create($validated);
+        $project = Project::create($validated);
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Project created successfully', 'project' => $project]);
+        }
 
         return redirect()->route('prasso-pm.projects.index')
             ->with('success', 'Project created successfully.');
@@ -73,6 +82,10 @@ class ProjectController extends Controller
     public function destroy(Project $project)
     {
         $project->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json(['message' => 'Project deleted successfully']);
+        }
 
         return redirect()->route('prasso-pm.projects.index')
             ->with('success', 'Project deleted successfully.');

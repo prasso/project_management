@@ -3,6 +3,7 @@
 namespace Prasso\ProjectManagement\Models;
 
 use Carbon\Carbon;
+use App\Models\User;
 
 class TimeEntry extends BaseModel
 {

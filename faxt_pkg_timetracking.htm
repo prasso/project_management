@@ -1,0 +1,779 @@
+
+<div>
+    [HEADER]
+        
+        <div class="bg-white  rounded-lg shadow-lg mt-5 mb-5 p-5" >
+    <h2 >Time Tracking Form</h2>
+            <div id="feedbackMessage" style="display:none; color: green; margin-top: 10px;">Time entry recorded successfully!</div>
+            <form class="event-form bg-white p-6" action="/prasso-pm/time-entries" method="post" id="timeForm">
+                @csrf
+                <input type="hidden" id="team_id" name="team_id" value="{{ $team_id }}">
+                <input type="hidden" id="return_json" name="return_json" value="true" />
+                <input type="hidden" id="site_page_data_id" name="site_page_data_id"  value="[DATA_PAGE_ID]"/>
+    
+                <div class="form-group">
+                    <label for="client_id">Client:</label>
+                    <select id="client_id" name="client_id" class="form-control" required>
+                        <option value="">Select Client</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="task_id">Task:</label>
+                    <select id="task_id" name="task_id" class="form-control" required>
+                        <option value="">Select Task</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="date">Date:</label>
+                    <input type="date" id="date" name="date" required>
+                </div>
+    
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="start_time">Start Time:</label>
+                            <input type="time" id="start_time" name="start_time" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="end_time">End Time:</label>
+                            <input type="time" id="end_time" name="end_time" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description:</label>
+                    <textarea id="description" name="description" rows="2" placeholder="Enter work description"></textarea>
+                </div>
+
+                <button type="submit">Add Time</button>
+            </form>
+    
+         
+    <div class="bg-white rounded-lg shadow-lg p-5">
+       <h2>Uninvoiced Time Entries</h2>
+            <table id="timeEntriesTable" class="bg-white ">
+                <thead>
+                    <tr>
+                        <th>Client/Task</th>
+                        <th>Date</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Duration</th>
+                        <th>Description</th>
+                        <th>Actions</th>
+                        <th>
+                            Invoice Actions<br/>
+                            <button type="button" onclick="timeTracker.invoiceSelected()" style="background: none; border: none; cursor: pointer;">
+                                <i class="material-icons teambutton">business</i> 
+                            </button>
+                            <button type="button" onclick="timeTracker.deleteSelected()" style="background: none; border: none; cursor: pointer;">
+                                <i class="material-icons teambutton">delete_forever</i>
+                            </button>
+                            <input type="checkbox" name="selectAll" onclick="timeTracker.selectAll(this)">
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Time entries will be appended here -->
+                </tbody>
+            </table>
+    </div>
+           
+    
+        </div>
+    <script>
+    class TimeTracker {
+        constructor(config) {
+            this.config = config;
+            this.timeForm = document.getElementById('timeForm');
+            this.timeEntriesTable = document.getElementById('timeEntriesTable');
+            this.clientSelect = document.getElementById('client_id');
+            this.taskSelect = document.getElementById('task_id');
+            
+            this.initializeEventListeners();
+            this.fetchTimeEntries();
+            this.fetchClients();
+        }
+
+        async fetchTimeEntries() {
+            try {
+                const response = await fetch('/prasso-pm/time-entries', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Response was not JSON');
+                }
+
+                const data = await response.json();
+                if (!Array.isArray(data)) {
+                    console.warn('Expected array of time entries but got:', data);
+                    return;
+                }
+
+                this.refreshTimeEntries(data);
+            } catch (error) {
+                console.error('Error fetching time entries:', error);
+                // Only show alert if it's not already displayed
+                if (!document.querySelector('.alert-error')) {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-error';
+                    alertDiv.textContent = 'Failed to load time entries. Please refresh the page.';
+                    this.timeEntriesTable.parentNode.insertBefore(alertDiv, this.timeEntriesTable);
+                }
+            }
+        }
+
+        async fetchClients() {
+            try {
+                const response = await fetch('/prasso-pm/clients', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Response was not JSON');
+                }
+
+                const clients = await response.json();
+                this.populateClientDropdown(clients.data);
+            } catch (error) {
+                console.error('Error fetching clients:', error);
+                alert('Failed to load clients. Please try refreshing the page.');
+            }
+        }
+
+        populateClientDropdown(clients) {
+            this.clientSelect.innerHTML = '<option value="">Select Client</option>';
+           
+            clients.forEach(client => {
+                const option = document.createElement('option');
+                option.value = client.id;
+                option.textContent = client.name;
+                this.clientSelect.appendChild(option);
+            });
+
+            // Add change event listener after populating
+            this.clientSelect.addEventListener('change', () => this.handleClientChange());
+        }
+
+        async handleClientChange() {
+            const clientId = this.clientSelect.value;
+            this.taskSelect.innerHTML = '<option value="">Select Task</option>';
+            
+            if (!clientId) {
+                return;
+            }
+
+            try {
+                const url = `/prasso-pm/tasks?client_id=${clientId}`;
+                const response = await fetch(url, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Response was not JSON');
+                }
+
+                const tasks = await response.json();
+                this.populateTaskDropdown(tasks.data);
+            } catch (error) {
+                console.error('Error fetching tasks:', error);
+                alert('Failed to load tasks. Please try selecting the client again.');
+            }
+        }
+
+        populateTaskDropdown(tasks) {
+            
+            this.taskSelect.innerHTML = '<option value="">Select Task</option>';
+            
+            tasks.forEach(task => {
+                const option = document.createElement('option');
+                option.value = task.id;
+                option.textContent = `${task.name}`;
+                this.taskSelect.appendChild(option);
+            });
+        }
+
+        formatDateForInput(dateTimeStr) {
+            if (!dateTimeStr) return '';
+            const date = new Date(dateTimeStr);
+            if (isNaN(date.getTime())) return '';
+            return date.toISOString().split('T')[0]; // Gets YYYY-MM-DD format
+        }
+
+        formatTimeForInput(dateTimeStr) {
+            if (!dateTimeStr) return '';
+            const date = new Date(dateTimeStr);
+            if (isNaN(date.getTime())) return '';
+            return date.toTimeString().slice(0, 5); // Gets HH:mm format
+        }
+
+        parseLocalDateTime(dateStr, timeStr) {
+            if (!dateStr) return null;
+            
+            // Create date object from local date and time
+            const [year, month, day] = dateStr.split('-').map(num => parseInt(num, 10));
+            let hours = 0, minutes = 0;
+            
+            if (timeStr) {
+                [hours, minutes] = timeStr.split(':').map(num => parseInt(num, 10));
+            }
+            
+            return new Date(year, month - 1, day, hours, minutes);
+        }
+
+        initializeEventListeners() {
+            document.addEventListener('DOMContentLoaded', () => {
+                // Get current local time
+                const now = new Date();
+                const localNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
+                
+                // Set current date
+                document.getElementById('date').value = localNow.toISOString().split('T')[0];
+                
+                // Set start time to exact current time
+                document.getElementById('start_time').value = localNow.toTimeString().slice(0, 5);
+                
+                // Set end time to 1 hour after start time
+                const localEndTime = new Date(localNow.getTime() + (60 * 60 * 1000));
+                document.getElementById('end_time').value = localEndTime.toTimeString().slice(0, 5);
+            });
+
+            // Add change event listener for start time
+            document.getElementById('start_time').addEventListener('change', (e) => {
+                const startTime = new Date(`1970-01-01T${e.target.value}:00`);
+                const endTime = new Date(startTime.getTime() + (60 * 60 * 1000));
+                document.getElementById('end_time').value = endTime.toTimeString().slice(0, 5);
+            });
+
+            this.timeForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.submitTimeEntry();
+            });
+        }
+
+        async submitTimeEntry() {
+            const formData = {
+                task_id: this.taskSelect.value,
+                description: document.getElementById('description').value,
+                start_time: this.parseLocalDateTime(
+                    document.getElementById('date').value,
+                    document.getElementById('start_time').value
+                ),
+                end_time: this.parseLocalDateTime(
+                    document.getElementById('date').value,
+                    document.getElementById('end_time').value
+                )
+            };
+
+            const submitButton = document.querySelector('form button[type="submit"]');
+            submitButton.disabled = true;
+
+            try {
+                const response = await fetch('/prasso-pm/time-entries', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                await this.fetchTimeEntries();
+                
+                this.resetForm(); // Reset the form after submission
+                
+                // Show feedback message
+                const feedbackMessage = document.getElementById('feedbackMessage');
+                feedbackMessage.style.display = 'block';
+                feedbackMessage.textContent = 'Time entry recorded successfully!';
+                setTimeout(() => {
+                    feedbackMessage.style.display = 'none';
+                }, 3000); // Hide after 3 seconds
+            } catch (error) {
+                console.error('Error submitting time entry:', error);
+                alert('Failed to save time entry. Please try again.');
+            } finally {
+                submitButton.disabled = false;
+            }
+        }
+
+        resetForm() {
+            // Get current local time
+            const now = new Date();
+            const localNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
+            
+            // Set current date
+            document.getElementById('date').value = localNow.toISOString().split('T')[0];
+            
+            // Set start time to exact current time
+            document.getElementById('start_time').value = localNow.toTimeString().slice(0, 5);
+            
+            // Set end time to 1 hour after start
+            const localEndTime = new Date(localNow.getTime() + (60 * 60 * 1000));
+            document.getElementById('end_time').value = localEndTime.toTimeString().slice(0, 5);
+            
+            // Reset client and task selects
+            document.getElementById('client_id').value = '';
+            document.getElementById('task_id').value = '';
+            
+            document.getElementById('description').value = '';
+        }
+
+        refreshTimeEntries(data) {
+            const tbody = this.timeEntriesTable.getElementsByTagName('tbody')[0];
+            if (!tbody) {
+                console.error('Table body not found');
+                return;
+            }
+            
+            tbody.innerHTML = '';
+
+            data.forEach(entry => {
+                const newRow = tbody.insertRow();
+                this.appendTimeEntry(
+                    entry.date, 
+                    entry.start_time, 
+                    entry.end_time, 
+                    entry.description, 
+                    entry.id,
+                    entry.client_name || '',  
+                    entry.task_name || '',    
+                    newRow
+                );
+            });
+        }
+
+        calculateDuration(startTime, endTime) {
+            if (!(startTime instanceof Date) || !(endTime instanceof Date)) {
+                return '0:00';
+            }
+            const diffMs = endTime - startTime;
+            const hours = Math.floor(diffMs / 3600000);
+            const minutes = Math.floor((diffMs % 3600000) / 60000);
+            return `${hours}:${minutes.toString().padStart(2, '0')}`;
+        }
+
+        appendTimeEntry(date, startTime, endTime, description, id, clientName, taskName, row) {
+            const cells = {
+                clientTask: this.createInputCell(row, 'text', `${clientName} / ${taskName}`),
+                date: this.createInputCell(row, 'date', this.formatDateForInput(date || startTime)), // Use start time as fallback for date
+                startTime: this.createInputCell(row, 'time', this.formatTimeForInput(startTime)),
+                endTime: this.createInputCell(row, 'time', this.formatTimeForInput(endTime)),
+                duration: row.insertCell(),
+                description: this.createInputCell(row, 'text', description || ''),
+                actions: this.createActionsCell(row, id),
+                checkbox: this.createCheckboxCell(row, id)
+            };
+
+            const startDate = new Date(startTime);
+            const endDate = new Date(endTime);
+            if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+                cells.duration.textContent = this.calculateDuration(startDate, endDate);
+            } else {
+                cells.duration.textContent = '0:00';
+            }
+        }
+
+        createInputCell(row, type, value) {
+            const cell = row.insertCell();
+            cell.innerHTML = `<input type="${type}" value="${value}" onchange="timeTracker.updateTimeEntry(this)">`;
+            return cell;
+        }
+
+        createActionsCell(row, id) {
+            const cell = row.insertCell();
+            cell.innerHTML = `
+                <button onclick="timeTracker.deleteRow(${id}, this)">Delete</button>
+                <button onclick="timeTracker.updateRow(${id}, this)">Update</button>
+            `;
+            return cell;
+        }
+
+        createCheckboxCell(row, id) {
+            const cell = row.insertCell();
+            cell.innerHTML = `<input type="checkbox" name="selectForInvoice" value="${id}">`;
+            return cell;
+        }
+
+        async deleteRow(id, button) {
+            if (!confirm('Are you sure you want to delete this entry?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/prasso-pm/time-entries/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok) {
+                    const row = button.closest('tr');
+                    row.remove();
+                } else {
+                    alert('Error deleting entry');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async updateRow(id, button) {
+            const row = button.parentNode.parentNode;
+            const startTime = row.cells[2].getElementsByTagName('input')[0].value;
+            const endTime = row.cells[3].getElementsByTagName('input')[0].value;
+            if (startTime && endTime && startTime < endTime) {
+                try {
+                    const entryDate = row.cells[1].getElementsByTagName('input')[0].value;
+                    const description = row.cells[5].getElementsByTagName('input')[0].value;
+                    const csrftoken = document.querySelector('meta[name="csrf-token"]').content;
+ 
+                    // Prepare data for the API call
+                    const data = {
+                        start_time: `${entryDate} ${startTime}`,
+                        end_time: `${entryDate} ${endTime}`,
+                        description: description
+                    };
+
+                    const response = await fetch(`/prasso-pm/time-entries/${id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrftoken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (response.ok) {
+                        const jsonResponse = await response.json();
+                        // Update the duration cell if the API call is successful
+                        row.cells[4].textContent = this.calculateDuration(startTime, endTime);
+                        
+                        // Show feedback message
+                        const feedbackMessage = document.getElementById('feedbackMessage');
+                        feedbackMessage.style.display = 'block';
+                        feedbackMessage.textContent = 'Time entry updated successfully!';
+                        setTimeout(() => {
+                            feedbackMessage.style.display = 'none';
+                        }, 3000);
+                    } else {
+                        alert('Error updating the data on the server.');
+                        console.error('Server error:', response.statusText);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred while trying to update the data.');
+                }
+            } else {
+                alert('Please enter valid times. Start time must be before end time.');
+            }
+        }
+
+updateTimeEntry(input) {
+    const row = input.closest('tr');
+    const startTimeCell = row.cells[2].querySelector('input');
+    const endTimeCell = row.cells[3].querySelector('input');
+    const durationCell = row.cells[4];
+
+    // Ensure both start and end times are present
+    if (startTimeCell.value && endTimeCell.value) {
+        // Parse times into Date objects for calculation
+        const startTime = this.parseTime(startTimeCell.value);
+        const endTime = this.parseTime(endTimeCell.value);
+
+        // Calculate and update duration
+        const duration = this.calculateDuration(startTime, endTime);
+        durationCell.textContent = duration;
+    }
+}
+
+// Helper method to parse time string into Date object
+parseTime(timeString) {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+}
+
+        selectAll(source) {
+            const checkboxes = document.querySelectorAll('input[name="selectForInvoice"]');
+            checkboxes.forEach(checkbox => checkbox.checked = source.checked);
+        }
+
+        deleteSelected() {
+            const selectedCheckboxes = document.querySelectorAll('input[name="selectForInvoice"]:checked');
+            if (selectedCheckboxes.length === 0) {
+                alert('Nothing was selected.');
+                return;
+            }
+            selectedCheckboxes.forEach(checkbox => {
+                this.deleteRow(checkbox.value, checkbox.closest('tr').querySelector('button'));
+            });
+        }
+
+        invoiceSelected() {
+            const selectedRecords = this.getSelectedTimeEntries();
+            if (selectedRecords.length === 0) {
+                alert('Nothing was selected.');
+                return;
+            }
+
+            const result = this.createInvoiceTable(selectedRecords);
+            const invoiceData = this.prepareInvoiceData(result.totalHours);
+            this.displayInvoicePreview(result.table, invoiceData);
+        }
+
+        getSelectedTimeEntries() {
+            const records = [];
+            let totalDuration = 0;
+            const rows = this.timeEntriesTable.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+            for (const row of rows) {
+                const checkbox = row.querySelector('input[type="checkbox"][name="selectForInvoice"]');
+                if (!checkbox?.checked) continue;
+
+                const cells = row.getElementsByTagName('td');
+                const duration = this.parseDuration(cells[4]);
+                if (duration !== null) {
+                    totalDuration += duration;
+                    records.push({
+                        date: cells[1].querySelector('input').value,
+                        startTime: cells[2].querySelector('input').value,
+                        endTime: cells[3].querySelector('input').value,
+                        duration: cells[4].textContent.trim(),
+                        description: cells[5].querySelector('input').value
+                    });
+                }
+            }
+
+            return records;
+        }
+
+        parseDuration(durationCell) {
+            const duration = durationCell.querySelector('input') ? 
+                durationCell.querySelector('input').value.trim() : 
+                durationCell.textContent.trim();
+
+            if (!duration?.includes(':')) return null;
+
+            const [hours, minutes] = duration.split(':').map(Number);
+            if (isNaN(hours) || isNaN(minutes)) {
+                console.warn('Invalid duration format:', duration);
+                return null;
+            }
+
+            return (hours * 60) + minutes;
+        }
+
+        createInvoiceTable(records) {
+            const table = document.createElement('table');
+            table.border = '1';
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Duration</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+            `;
+
+            const tbody = document.createElement('tbody');
+            let totalDuration = 0;
+
+            records.forEach(record => {
+                const [hours, minutes] = record.duration.split(':').map(Number);
+                totalDuration += (hours * 60) + minutes;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.date}</td>
+                    <td>${record.startTime}</td>
+                    <td>${record.endTime}</td>
+                    <td>${record.duration}</td>
+                    <td>${record.description}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            const totalHours = (totalDuration / 60).toFixed(2);
+            const footerRow = document.createElement('tr');
+            footerRow.innerHTML = `
+                <td colspan="3"><strong>Total Duration</strong></td>
+                <td colspan="2">${totalHours} hours</td>
+            `;
+            tbody.appendChild(footerRow);
+            table.appendChild(tbody);
+
+            return { totalHours, table };
+        }
+
+        prepareInvoiceData(totalHours) {
+            const currentDate = new Date();
+            const dueDate = new Date(currentDate);
+            dueDate.setDate(dueDate.getDate() + 15);
+
+            return {
+                date: currentDate.toISOString().split('T')[0],
+                dueDate: dueDate.toISOString().split('T')[0],
+                subtotal: (75 * totalHours).toFixed(2)
+            };
+        }
+
+        displayInvoicePreview(invoiceTable, invoiceData) {
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            printWindow.document.write(`
+                <html>
+                    <head>
+                       <title>${invoiceData.date} Comporium Invoice</title>
+                       <style>
+                            body {
+                                font-family: Arial, sans-serif;
+                                margin: 0;
+                                padding: 20px;
+                                background-color: #f5f5f5;
+                            }
+                            .invoice {
+                                max-width: 800px;
+                                margin: auto;
+                                background: #fff;
+                                padding: 20px;
+                                border-radius: 8px;
+                                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                            }
+                            .header, .footer { text-align: center; margin-bottom: 20px; }
+                            .details { width: 100%; margin-bottom: 20px; }
+                            table {
+                                border-collapse: collapse;
+                                width: 100%;
+                            }
+                            th, td {
+                                border: 1px solid black;
+                                padding: 8px;
+                                text-align: left;
+                            }
+                            th { background-color: #f2f2f2; }
+                            .total { text-align: right; margin-top: 20px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="invoice">
+                            <div class="header">
+                                <h1>INVOICE</h1>
+                                <p>Date: ${invoiceData.date}</p>
+                                <p>Due Date: ${invoiceData.dueDate}</p>
+                            </div>
+                            <div class="details">
+                                <p><strong>Issued To:</strong>Wes Taylor / Comporium<br>471 Lakeshore Pkwy<br>Rock Hill, SC 29730</p>
+                                <p><strong>Pay To:</strong>Bobbi Perreault<br>489 NW Bronco Ter.<br>Lake City, FL 32055</p>
+                            </div>
+                            <div class="items">
+                                ${invoiceTable.outerHTML}
+                            </div>
+                            <div class="total">
+                                <p><strong>Total:</strong> $${invoiceData.subtotal}</p>
+                            </div>
+                            <div class="footer">
+                                <p>Thank you!</p>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        placeInitialData(data) {
+
+            // Iterate over all keys in the `data` object
+            Object.keys(data).forEach(key => {
+
+                // Check if the current item is an object and has a `display` property
+                if (typeof data[key] === 'object' && data[key] !== null && 'display' in data[key]) {
+                    try {
+
+                        // Parse the display data
+                        const displayData = JSON.parse(data[key].display);
+                        // If parsing successful, append the time entry
+                        if (displayData) {
+                            this.appendTimeEntry(
+                                displayData.entryDate,
+                                displayData.startTime,
+                                displayData.endTime,
+                                displayData.description,
+                                data[key].id,
+                                data[key].client_name || '',  
+                                data[key].task_name || '',    
+                                this.timeEntriesTable.getElementsByTagName('tbody')[0].insertRow()
+                            );
+                        }
+                    } catch (error) {
+                        console.error('Error parsing display data:', error);
+                    }
+                }
+            });
+        }
+    }
+    </script>
+     <script>
+                // Initialize configuration with server-replaced values
+                const config = {
+                    siteId: '[SITE_ID]',
+                    dataPageId: '[DATA_PAGE_ID]',
+                    teamId: '[TEAM_ID]'
+                };
+                
+                // Initialize TimeTracker with configuration
+                const timeTracker = new TimeTracker(config);
+                
+            </script>
+    
+    
+    </div>

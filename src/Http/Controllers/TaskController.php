@@ -10,7 +10,12 @@ class TaskController extends Controller
 {
     public function index()
     {
-        $tasks = Task::with(['project', 'assignee'])->latest()->paginate(10);
+        $tasks = Task::with(['project.client', 'assignee'])->latest()->paginate(10);
+        
+        if (request()->wantsJson()) {
+            return response()->json($tasks);
+        }
+
         return view('prasso-pm::tasks.index', compact('tasks'));
     }
 
@@ -26,14 +31,18 @@ class TaskController extends Controller
             'project_id' => 'required|exists:projects,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'priority' => 'required|in:low,medium,high,urgent',
-            'status' => 'required|in:todo,in_progress,review,completed',
             'due_date' => 'nullable|date',
-            'estimated_hours' => 'nullable|integer|min:0',
+            'priority' => 'required|in:low,medium,high',
+            'status' => 'required|in:pending,in_progress,completed,on_hold',
             'assigned_to' => 'nullable|exists:users,id',
+            'estimated_hours' => 'nullable|numeric|min:0',
         ]);
 
-        Task::create($validated);
+        $task = Task::create($validated);
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Task created successfully', 'task' => $task]);
+        }
 
         return redirect()->route('prasso-pm.tasks.index')
             ->with('success', 'Task created successfully.');
@@ -55,7 +64,7 @@ class TaskController extends Controller
     {
         $validated = $request->validate([
             'project_id' => 'required|exists:projects,id',
-            'title' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'priority' => 'required|in:low,medium,high,urgent',
             'status' => 'required|in:todo,in_progress,review,completed',
@@ -73,6 +82,10 @@ class TaskController extends Controller
     public function destroy(Task $task)
     {
         $task->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json(['message' => 'Task deleted successfully']);
+        }
 
         return redirect()->route('prasso-pm.tasks.index')
             ->with('success', 'Task deleted successfully.');
