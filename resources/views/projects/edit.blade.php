@@ -128,5 +128,83 @@
             </div>
         </form>
     </div>
+
+    <div class="mt-8 bg-white shadow-md rounded-lg p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold">Project Tasks</h2>
+            <a href="{{ route('prasso-pm.tasks.create', ['project_id' => $project->id]) }}" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md">
+                Add New Task
+            </a>
+        </div>
+
+        @if($tasks->count() > 0)
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @foreach($tasks as $task)
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <a href="{{ route('prasso-pm.tasks.show', $task) }}" class="text-blue-600 hover:text-blue-900">
+                                        {{ $task->name }}
+                                    </a>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full
+                                        @if($task->status === 'completed') bg-green-100 text-green-800
+                                        @elseif($task->status === 'in_progress') bg-blue-100 text-blue-800
+                                        @elseif($task->status === 'review') bg-yellow-100 text-yellow-800
+                                        @else bg-gray-100 text-gray-800
+                                        @endif">
+                                        {{ ucfirst(str_replace('_', ' ', $task->status)) }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full
+                                        @if($task->priority === 'high') bg-red-100 text-red-800
+                                        @elseif($task->priority === 'medium') bg-yellow-100 text-yellow-800
+                                        @else bg-green-100 text-green-800
+                                        @endif">
+                                        {{ ucfirst($task->priority) }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ $task->assignee ? $task->assignee->name : 'Unassigned' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ $task->due_date ? $task->due_date->format('M d, Y') : 'Not set' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <a href="{{ route('prasso-pm.tasks.edit', $task) }}" class="text-blue-600 hover:text-blue-900 mr-3">Edit</a>
+                                    <form action="{{ route('prasso-pm.tasks.destroy', $task) }}" method="POST" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure you want to delete this task?')">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4">
+                {{ $tasks->links() }}
+            </div>
+        @else
+            <p class="text-gray-500 text-center py-4">No tasks found for this project.</p>
+        @endif
+    </div>
 </div>
 @endsection

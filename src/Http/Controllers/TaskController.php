@@ -4,6 +4,8 @@ namespace Prasso\ProjectManagement\Http\Controllers;
 
 use Prasso\ProjectManagement\Models\Task;
 use Prasso\ProjectManagement\Models\Project;
+use Prasso\ProjectManagement\Models\Client;
+use Prasso\ProjectManagement\Models\TimeEntry;
 use Illuminate\Http\Request;
 
 class TaskController extends Controller
@@ -22,7 +24,8 @@ class TaskController extends Controller
     public function create()
     {
         $projects = Project::pluck('name', 'id');
-        return view('prasso-pm::tasks.create', compact('projects'));
+        $clients = Client::pluck('name', 'id');
+        return view('prasso-pm::tasks.create', compact('projects', 'clients'));
     }
 
     public function store(Request $request)

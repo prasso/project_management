@@ -16,6 +16,14 @@ class TimeEntry extends BaseModel
         'hourly_rate' => 'decimal:2',
     ];
 
+    protected $fillable = [
+        'description',
+        'hours',
+        'rate',
+        'client_id',
+        'invoiced',
+    ];
+
     public function task()
     {
         return $this->belongsTo(Task::class);

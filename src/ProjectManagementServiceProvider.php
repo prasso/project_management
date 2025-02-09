@@ -3,6 +3,7 @@
 namespace Prasso\ProjectManagement;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Route;
 use Prasso\ProjectManagement\Filament\Resources\ProjectResource;
 use Filament\Facades\Filament;
 
@@ -18,6 +19,7 @@ class ProjectManagementServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'prasso-pm');
         $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
 
         if ($this->app->runningInConsole()) {
             $this->publishes([

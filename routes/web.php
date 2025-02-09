@@ -35,6 +35,11 @@ Route::middleware(['web', 'auth'])->prefix('prasso-pm')->name('prasso-pm.')->gro
     Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store');
     Route::put('invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
     Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+    Route::post('invoices/{invoice}/mark-as-paid', [InvoiceController::class, 'markAsPaid'])->name('invoices.mark-as-paid');
+    Route::get('invoices/uninvoiced-time-entries/{clientId}', [TimeEntryController::class, 'getUninvoicedTimeEntries']);
+    Route::post('invoices/{invoice}/mark-as-sent', [InvoiceController::class, 'markAsSent'])->name('invoices.mark-as-sent');
+    Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
+    Route::post('invoices/{invoice}/mark-as-pending', [InvoiceController::class, 'markAsPending'])->name('invoices.mark-as-pending');
 
     // Time Entries
     Route::resource('time-entries', TimeEntryController::class);

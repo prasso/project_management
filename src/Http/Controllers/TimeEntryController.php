@@ -4,6 +4,7 @@ namespace Prasso\ProjectManagement\Http\Controllers;
 
 use Prasso\ProjectManagement\Models\TimeEntry;
 use Prasso\ProjectManagement\Models\Task;
+use Prasso\ProjectManagement\Models\Client;
 use Illuminate\Http\Request;
 
 class TimeEntryController extends Controller
@@ -131,4 +132,27 @@ class TimeEntryController extends Controller
 
         return redirect()->back()->with('success', 'Timer stopped successfully.');
     }
+
+  
+ 
+public function getUninvoicedTimeEntries(Request $request, $clientId)
+{
+    $client = Client::find($clientId);
+    if (!$client) {
+        return response()->json(['error' => 'Client not found'], 404);
+    }
+
+    $timeEntries = TimeEntry::where('client_id', $clientId)
+        ->where('invoiced', 0)
+        ->get()
+        ->each(function ($timeEntry) {
+            $project = $timeEntry->task->project;
+            $timeEntry->hourly_rate = $project->hourly_rate;
+        });
+
+    return response()->json([
+        'client' => $client,
+        'timeEntries' => $timeEntries
+    ]);
+}
 }

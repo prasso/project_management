@@ -57,7 +57,8 @@ class ProjectController extends Controller
     public function edit(Project $project)
     {
         $clients = Client::pluck('name', 'id');
-        return view('prasso-pm::projects.edit', compact('project', 'clients'));
+        $tasks = $project->tasks()->with('assignee')->latest()->paginate(10);
+        return view('prasso-pm::projects.edit', compact('project', 'clients', 'tasks'));
     }
 
     public function update(Request $request, Project $project)

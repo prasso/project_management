@@ -30,12 +30,12 @@
 
                             <div class="col-span-6 sm:col-span-3">
                                 <label for="issue_date" class="block text-sm font-medium text-gray-700">Issue Date</label>
-                                <input type="date" name="issue_date" id="issue_date" value="{{ $invoice->issue_date->format('Y-m-d') }}" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                <input type="date" name="issue_date" id="issue_date" value="{{ $invoice->issue_date->format('Y-m-d') }}" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" @if($invoice->status === 'paid') disabled @endif>
                             </div>
 
                             <div class="col-span-6 sm:col-span-3">
                                 <label for="due_date" class="block text-sm font-medium text-gray-700">Due Date</label>
-                                <input type="date" name="due_date" id="due_date" value="{{ $invoice->due_date->format('Y-m-d') }}" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                <input type="date" name="due_date" id="due_date" value="{{ $invoice->due_date->format('Y-m-d') }}" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" @if($invoice->status === 'paid') disabled @endif>
                             </div>
 
                             <div class="col-span-6 sm:col-span-3">
@@ -43,9 +43,23 @@
                                 <input type="number" name="tax_rate" id="tax_rate" step="0.01" min="0" max="100" value="{{ $invoice->tax_rate }}" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
                             </div>
 
+                            <div class="col-span-6 sm:col-span-4">
+                                <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                                <select id="status" name="status" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" @if($invoice->status === 'paid') disabled @endif>
+                                    <option value="pending" {{ $invoice->status === 'pending' ? 'selected' : '' }}>Pending</option>
+                                    <option value="sent" {{ $invoice->status === 'sent' ? 'selected' : '' }}>Sent</option>
+                                    <option value="paid" {{ $invoice->status === 'paid' ? 'selected' : '' }}>Paid</option>
+                                </select>
+                            </div>
+
                             <div class="col-span-6">
                                 <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
-                                <textarea id="notes" name="notes" rows="3" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">{{ $invoice->notes }}</textarea>
+                                <textarea name="notes" id="notes" rows="3" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">{{ $invoice->notes }}</textarea>
+                            </div>
+
+                            <div class="col-span-6 sm:col-span-4">
+                                <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
+                                <input type="text" name="amount" id="amount" value="{{ $invoice->total }}" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" readonly>
                             </div>
                         </div>
 
@@ -65,28 +79,27 @@
                                                     @endforeach
                                                 </select>
                                             </div>
-
-                                            <div class="col-span-6">
+                                            <div class="col-span-6 sm:col-span-3">
                                                 <label class="block text-sm font-medium text-gray-700">Description</label>
-                                                <input type="text" name="items[{{ $index }}][description]" value="{{ $item->description }}" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                                <input type="text" name="items[{{ $index }}][description]" value="{{ $item->description }}" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
                                             </div>
-
-                                            <div class="col-span-3 sm:col-span-2">
+                                            <div class="col-span-6 sm:col-span-3">
                                                 <label class="block text-sm font-medium text-gray-700">Quantity</label>
-                                                <input type="number" name="items[{{ $index }}][quantity]" value="{{ $item->quantity }}" min="0" step="0.01" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                                <input type="number" name="items[{{ $index }}][quantity]" value="{{ $item->quantity }}" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required min="0">
                                             </div>
-
-                                            <div class="col-span-3 sm:col-span-2">
+                                            <div class="col-span-6 sm:col-span-3">
                                                 <label class="block text-sm font-medium text-gray-700">Rate</label>
-                                                <input type="number" name="items[{{ $index }}][rate]" value="{{ $item->rate }}" min="0" step="0.01" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                                <input type="number" name="items[{{ $index }}][rate]" value="{{ $item->rate }}" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required min="0">
                                             </div>
                                         </div>
                                     </div>
                                     @endforeach
                                 </div>
+                                @unless($invoice->status === 'paid')
                                 <button type="button" id="add-item" class="mt-4 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                     Add Item
                                 </button>
+                                @endunless
                             </div>
                         </div>
                     </div>
@@ -104,7 +117,8 @@
 @push('scripts')
 <script>
     let itemCount = {{ count($invoice->items) }};
-    
+    const addItemButton = document.getElementById('add-item');
+    if (addItemButton) {   
     document.getElementById('add-item').addEventListener('click', function() {
         const template = document.querySelector('.invoice-item').cloneNode(true);
         const inputs = template.querySelectorAll('input, select');
@@ -118,6 +132,7 @@
         document.getElementById('invoice-items').appendChild(template);
         itemCount++;
     });
+}
 </script>
 @endpush
 @endsection

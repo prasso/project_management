@@ -6,12 +6,13 @@ use Prasso\ProjectManagement\Models\Invoice;
 use Prasso\ProjectManagement\Models\Client;
 use Prasso\ProjectManagement\Models\Project;
 use Illuminate\Http\Request;
+use DB;
 
 class InvoiceController extends Controller
 {
     public function index()
     {
-        $invoices = Invoice::with(['client', 'timeEntries'])->latest()->paginate(10);
+        $invoices = Invoice::with(['client', 'items'])->latest()->paginate(10);
         
         if (request()->wantsJson()) {
             return response()->json($invoices);
@@ -24,6 +25,7 @@ class InvoiceController extends Controller
     {
         $clients = Client::pluck('name', 'id');
         $projects = Project::pluck('name', 'id');
+       
         return view('prasso-pm::invoices.create', compact('clients', 'projects'));
     }
 
@@ -38,10 +40,15 @@ class InvoiceController extends Controller
             'items' => 'required|array|min:1',
             'items.*.project_id' => 'nullable|exists:projects,id',
             'items.*.task_id' => 'nullable|exists:tasks,id',
-            'items.*.description' => 'required|string',
+            'items.*.description' => 'nullable|string',
             'items.*.quantity' => 'required|numeric|min:0',
             'items.*.rate' => 'required|numeric|min:0',
         ]);
+
+        // Set default 'N/A' for null descriptions
+        foreach ($validated['items'] as $key => $item) {
+            $validated['items'][$key]['description'] = $item['description'] ?? 'N/A';
+        }
 
         $invoice = Invoice::create([
             'client_id' => $validated['client_id'],
@@ -83,13 +90,17 @@ class InvoiceController extends Controller
 
     public function update(Request $request, Invoice $invoice)
     {
+        if ($invoice->status !== 'draft') {
+            return back()->with('error', 'Only draft invoices can be edited.');
+        }
+
         $validated = $request->validate([
             'client_id' => 'required|exists:clients,id',
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
             'notes' => 'nullable|string',
-            'items' => 'required|array|min:1',
+            'items' => 'nullable|array',
             'items.*.id' => 'nullable|exists:invoice_items,id',
             'items.*.project_id' => 'nullable|exists:projects,id',
             'items.*.task_id' => 'nullable|exists:tasks,id',
@@ -98,34 +109,50 @@ class InvoiceController extends Controller
             'items.*.rate' => 'required|numeric|min:0',
         ]);
 
-        $invoice->update([
-            'client_id' => $validated['client_id'],
-            'issue_date' => $validated['issue_date'],
-            'due_date' => $validated['due_date'],
-            'tax_rate' => $validated['tax_rate'] ?? 0,
-            'notes' => $validated['notes'],
-        ]);
+        DB::transaction(function () use ($invoice, $validated) {
+            $invoice->update([
+                'client_id' => $validated['client_id'],
+                'issue_date' => $validated['issue_date'],
+                'due_date' => $validated['due_date'],
+                'tax_rate' => $validated['tax_rate'] ?? 0,
+                'notes' => $validated['notes'],
+            ]);
 
-        // Delete removed items
-        $keepIds = collect($validated['items'])->pluck('id')->filter()->all();
-        $invoice->items()->whereNotIn('id', $keepIds)->delete();
+            // Handle invoice items
+            if (isset($validated['items'])) {
+                // Delete removed items
+                $itemIds = collect($validated['items'])->pluck('id')->filter()->toArray();
+                $invoice->items()->whereNotIn('id', $itemIds)->delete();
 
-        // Update or create items
-        foreach ($validated['items'] as $item) {
-            if (!empty($item['id'])) {
-                $invoice->items()->find($item['id'])->update($item);
-            } else {
-                $invoice->items()->create($item);
+                // Update or create items
+                foreach ($validated['items'] as $item) {
+                    if (isset($item['id'])) {
+                        $invoice->items()->where('id', $item['id'])->update([
+                            'project_id' => $item['project_id'],
+                            'task_id' => $item['task_id'],
+                            'description' => $item['description'],
+                            'quantity' => $item['quantity'],
+                            'rate' => $item['rate'],
+                            'amount' => $item['quantity'] * $item['rate'],
+                        ]);
+                    } else {
+                        $invoice->items()->create([
+                            'project_id' => $item['project_id'],
+                            'task_id' => $item['task_id'],
+                            'description' => $item['description'],
+                            'quantity' => $item['quantity'],
+                            'rate' => $item['rate'],
+                            'amount' => $item['quantity'] * $item['rate'],
+                        ]);
+                    }
+                }
             }
-        }
 
-        $invoice->calculateTotals()->save();
+            $invoice->calculateTotals();
+            $invoice->save();
+        });
 
-        if ($request->wantsJson()) {
-            return response()->json(['message' => 'Invoice updated successfully', 'invoice' => $invoice]);
-        }
-
-        return redirect()->route('prasso-pm.invoices.index')
+        return redirect()->route('prasso-pm.invoices.show', $invoice)
             ->with('success', 'Invoice updated successfully.');
     }
 
@@ -143,13 +170,41 @@ class InvoiceController extends Controller
 
     public function markAsPaid(Invoice $invoice)
     {
-        $invoice->update(['status' => 'paid']);
-        return redirect()->back()->with('success', 'Invoice marked as paid.');
+        if ($invoice->status !== 'sent') {
+            return back()->with('error', 'Only sent invoices can be marked as paid.');
+        }
+
+        $invoice->update([
+            'status' => 'paid',
+            'paid_at' => now()
+        ]);
+
+        return back()->with('success', 'Invoice has been marked as paid.');
     }
 
     public function markAsSent(Invoice $invoice)
     {
-        $invoice->update(['status' => 'sent']);
-        return redirect()->back()->with('success', 'Invoice marked as sent.');
+        if ($invoice->status !== 'draft') {
+            return back()->with('error', 'Only draft invoices can be marked as sent.');
+        }
+
+        $invoice->update([
+            'status' => 'sent',
+            'sent_at' => now()
+        ]);
+
+        return back()->with('success', 'Invoice has been marked as sent.');
+    }
+
+    public function cancel(Invoice $invoice)
+    {
+        $invoice->update(['status' => 'cancelled']);
+        return redirect()->back()->with('success', 'Invoice cancelled successfully.');
+    }
+
+    public function markAsPending(Invoice $invoice)
+    {
+        $invoice->update(['status' => 'pending']);
+        return response()->json(['success' => true]);
     }
 }
