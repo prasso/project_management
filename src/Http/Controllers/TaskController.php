@@ -53,7 +53,7 @@ class TaskController extends Controller
 
     public function show(Task $task)
     {
-        $task->load(['project', 'assignedTo', 'timeEntries']);
+        $task->load(['project', 'assignee', 'timeEntries']);
         return view('prasso-pm::tasks.show', compact('task'));
     }
 

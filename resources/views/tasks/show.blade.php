@@ -64,7 +64,7 @@
                     </div>
                     <div>
                         <label class="block text-gray-700 font-bold mb-1">Assigned To</label>
-                        <p>{{ $task->assignedTo ? $task->assignedTo->name : 'Unassigned' }}</p>
+                        <p>{{ $task->assignee ? $task->assignee->name : 'Unassigned' }}</p>
                     </div>
                 </div>
             </div>
@@ -86,7 +86,7 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         @foreach($task->timeEntries as $entry)
                         <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">{{ $entry->date->format('M d, Y') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">{{ $entry->date ? $entry->date->format('M d, Y') : 'N/A' }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm">{{ $entry->hours }}</td>
                             <td class="px-6 py-4 text-sm">{{ $entry->description }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm">{{ $entry->user->name }}</td>
