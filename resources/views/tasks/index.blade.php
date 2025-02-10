@@ -21,10 +21,10 @@
                         <table class="min-w-full divide-y divide-gray-300">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Title</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Task</th>
                                     <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Project</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Title</th>
                                     <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
-                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Priority</th>
                                     <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Due Date</th>
                                     <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Assigned To</th>
                                     <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
@@ -37,10 +37,11 @@
                                 <tr>
                                     <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900">
                                         <a href="{{ route('prasso-pm.tasks.show', $task) }}" class="text-indigo-600 hover:text-indigo-900">
-                                            {{ $task->title }}
+                                            {{ $task->name }}
                                         </a>
                                     </td>
-                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ $task->project->name }}</td>
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ $task->project->name }}</td>   
+                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ $task->project->title }}</td>
                                     <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                         @switch($task->status)
                                             @case('todo')
@@ -65,30 +66,7 @@
                                                 @break
                                         @endswitch
                                     </td>
-                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                        @switch($task->priority)
-                                            @case('low')
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                    Low
-                                                </span>
-                                                @break
-                                            @case('medium')
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                    Medium
-                                                </span>
-                                                @break
-                                            @case('high')
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                                    High
-                                                </span>
-                                                @break
-                                            @case('urgent')
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                    Urgent
-                                                </span>
-                                                @break
-                                        @endswitch
-                                    </td>
+                                    
                                     <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                         @if($task->due_date)
                                             <span class="{{ $task->due_date < now() ? 'text-red-600' : 'text-gray-900' }}">
