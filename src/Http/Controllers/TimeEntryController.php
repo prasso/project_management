@@ -25,7 +25,7 @@ class TimeEntryController extends Controller
                     'billable' => $entry->billable,
                     'hourly_rate' => $entry->hourly_rate,
                     'task_id' => $entry->task_id,
-                    'task_name' => $entry->task->title,
+                    'task_name' => $entry->task->name,
                     'project_name' => $entry->task->project->name,
                     'client_name' => $entry->task->project->client->name
                 ];
@@ -37,7 +37,7 @@ class TimeEntryController extends Controller
 
     public function create()
     {
-        $tasks = Task::pluck('title', 'id');
+        $tasks = Task::pluck('name', 'id');
         return view('prasso-pm::time-entries.create', compact('tasks'));
     }
 
@@ -68,7 +68,7 @@ class TimeEntryController extends Controller
 
     public function edit(TimeEntry $timeEntry)
     {
-        $tasks = Task::pluck('title', 'id');
+        $tasks = Task::pluck('name', 'id');
         return view('prasso-pm::time-entries.edit', compact('timeEntry', 'tasks'));
     }
 
