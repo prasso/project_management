@@ -25,9 +25,9 @@
             </div>
 
             <div class="mb-4">
-                <label for="title" class="block text-gray-700 font-bold mb-2">Title</label>
-                <input type="text" name="title" id="title" class="form-input w-full @error('title') border-red-500 @enderror" value="{{ old('title') }}" required>
-                @error('title')
+                <label for="name" class="block text-gray-700 font-bold mb-2">Title</label>
+                <input type="text" name="name" id="name" class="form-input w-full @error('name') border-red-500 @enderror" value="{{ old('name') }}" required>
+                @error('name')
                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                 @enderror
             </div>
